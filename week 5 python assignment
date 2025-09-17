@@ -1,0 +1,81 @@
+Smartphone Class
+
+# Base class for electronic devices
+class ElectronicDevice:
+    def __init__(self, brand, model):
+        self.brand = brand
+        self.model = model
+        self.is_on = False
+
+    def power_on(self):
+        self.is_on = True
+        return f"{self.brand} {self.model} is now powered on."
+
+    def power_off(self):
+        self.is_on = False
+        return f"{self.brand} {self.model} is now powered off."
+
+# The Smartphone class inherits from ElectronicDevice
+class Smartphone(ElectronicDevice):
+    def __init__(self, brand, model, os, storage_gb):
+        # Call the constructor of the parent class
+        super().__init__(brand, model)
+        self.os = os
+        self.storage_gb = storage_gb
+        self.apps = []
+
+    # Method to install an app
+    def install_app(self, app_name):
+        self.apps.append(app_name)
+        return f"{app_name} installed on {self.model}."
+
+    # Method to display phone info
+    def get_info(self):
+        return (f"Brand: {self.brand}\n"
+                f"Model: {self.model}\n"
+                f"OS: {self.os}\n"
+                f"Storage: {self.storage_gb}GB\n"
+                f"Apps: {', '.join(self.apps)}")
+
+# Create objects (instances) of the Smartphone class
+iphone = Smartphone("Apple", "iPhone 15 Pro", "iOS", 256)
+galaxy = Smartphone("Samsung", "Galaxy S23", "Android", 128)
+
+# Demonstrate methods and attributes
+print(iphone.power_on())
+print(iphone.install_app("Instagram"))
+print(iphone.install_app("Spotify"))
+print("-" * 20)
+print(iphone.get_info())
+print("-" * 20)
+
+
+Polymorphism Challenge
+
+# Base class
+class Vehicle:
+    def move(self):
+        raise NotImplementedError("Subclass must implement abstract method")
+
+# Car class inherits from Vehicle
+class Car(Vehicle):
+    def move(self):
+        return "Driving 🚗"
+
+# Plane class inherits from Vehicle
+class Plane(Vehicle):
+    def move(self):
+        return "Flying ✈️"
+
+# Boat class inherits from Vehicle
+class Boat(Vehicle):
+    def move(self):
+        return "Sailing ⛵"
+
+# Create a list of different vehicle objects
+vehicles = [Car(), Plane(), Boat()]
+
+# Iterate through the list and call the same method
+for vehicle in vehicles:
+    print(vehicle.move())
+print(galaxy.get_info())
