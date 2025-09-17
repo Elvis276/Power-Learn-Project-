@@ -1,0 +1,172 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
+from wordcloud import WordCloud
+from collections import Counter
+import re
+
+# Set a consistent style for plots
+sns.set_theme(style="whitegrid")
+
+# --- Part 1: Data Loading and Basic Exploration ---
+
+@st.cache_data
+def load_data(url):
+    """
+    Loads the dataset and performs initial exploration.
+    Using Streamlit's @st.cache_data decorator to cache the data.
+    """
+    try:
+        df = pd.read_csv(url, low_memory=False)
+        st.write("### Data Loading and Exploration")
+        st.write(f"DataFrame dimensions: {df.shape[0]} rows, {df.shape[1]} columns")
+        
+        st.write("#### First 5 rows of the dataset:")
+        st.dataframe(df.head())
+        
+        st.write("#### Data Types and Missing Values:")
+        # Check for missing values and data types
+        df_info = pd.DataFrame({
+            'Dtype': df.dtypes,
+            'Non-Null Count': df.count(),
+            'Null Count': df.isnull().sum()
+        })
+        st.dataframe(df_info)
+        
+        st.write("#### Basic Statistics for Numerical Columns:")
+        st.dataframe(df.describe(include=np.number))
+        
+        return df
+    except FileNotFoundError:
+        st.error("metadata.csv not found. Please download it and place it in the same directory.")
+        st.stop()
+    except Exception as e:
+        st.error(f"An error occurred while loading the data: {e}")
+        st.stop()
+
+# --- Part 2: Data Cleaning and Preparation ---
+
+def clean_data(df):
+    """
+    Cleans the DataFrame and prepares it for analysis.
+    """
+    st.write("### Data Cleaning and Preparation")
+    
+    # Identify and handle missing values in key columns
+    df.dropna(subset=['publish_time', 'abstract', 'journal'], inplace=True)
+    st.write("Dropped rows with missing values in 'publish_time', 'abstract', or 'journal'.")
+    st.write(f"New DataFrame dimensions: {df.shape[0]} rows, {df.shape[1]} columns")
+    
+    # Convert 'publish_time' to datetime and extract the year
+    df['publish_time'] = pd.to_datetime(df['publish_time'], errors='coerce')
+    df.dropna(subset=['publish_time'], inplace=True) # Drop rows where conversion failed
+    df['publish_year'] = df['publish_time'].dt.year
+    st.write("Converted 'publish_time' to datetime and created 'publish_year' column.")
+    
+    # Create 'abstract_word_count' column
+    df['abstract_word_count'] = df['abstract'].apply(lambda x: len(str(x).split()))
+    st.write("Created 'abstract_word_count' column.")
+    
+    return df
+
+# --- Part 3: Data Analysis and Visualization ---
+
+def perform_analysis_and_visualize(df):
+    """
+    Performs data analysis and generates visualizations.
+    """
+    st.write("### Data Analysis and Visualization")
+    
+    # Filter out years with very few publications to avoid noise
+    df_filtered = df[(df['publish_year'] >= 2018) & (df['publish_year'] <= 2022)]
+
+    # 1. Plot number of publications over time
+    st.write("#### Publications Over Time")
+    year_counts = df_filtered['publish_year'].value_counts().sort_index()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    year_counts.plot(kind='line', marker='o', ax=ax, color='skyblue')
+    ax.set_title('Number of Publications by Year')
+    ax.set_xlabel('Publication Year')
+    ax.set_ylabel('Number of Papers')
+    st.pyplot(fig)
+    
+    # 2. Top publishing journals
+    st.write("#### Top 10 Publishing Journals")
+    top_journals = df_filtered['journal'].value_counts().nlargest(10)
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sns.barplot(x=top_journals.values, y=top_journals.index, palette='viridis', ax=ax)
+    ax.set_title('Top 10 Journals by Publication Count')
+    ax.set_xlabel('Number of Papers')
+    ax.set_ylabel('Journal')
+    st.pyplot(fig)
+    
+    # 3. Distribution of paper counts by source
+    st.write("#### Paper Counts by Source")
+    source_counts = df_filtered['source_x'].value_counts()
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.pie(source_counts, labels=source_counts.index, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("pastel"))
+    ax.set_title('Distribution of Papers by Source')
+    st.pyplot(fig)
+    
+    # 4. Word Cloud of paper titles
+    st.write("#### Word Cloud of Paper Titles")
+    all_titles = " ".join(df_filtered['title'].dropna())
+    # Remove common words and short words
+    stopwords = set(["a", "an", "the", "in", "for", "on", "of", "and", "with", "is", "by", "its", "it", "as", "from", "at"])
+    all_titles_cleaned = " ".join([word for word in all_titles.split() if word.lower() not in stopwords and len(word) > 2])
+    
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_titles_cleaned)
+    fig, ax = plt.subplots()
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis('off')
+    st.pyplot(fig)
+
+# --- Part 4: Streamlit Application ---
+
+def streamlit_app():
+    """
+    Builds the Streamlit application layout and widgets.
+    """
+    st.title("CORD-19 Data Explorer 🔬")
+    st.write("A simple application to explore the COVID-19 research paper metadata.")
+    
+    # Load and clean data (cached to run only once)
+    df = load_data('metadata.csv')
+    cleaned_df = clean_data(df.copy())
+    
+    # Interactive widgets
+    st.sidebar.header("Filter and View")
+    
+    # Slider to filter by year
+    min_year = int(cleaned_df['publish_year'].min())
+    max_year = int(cleaned_df['publish_year'].max())
+    year_range = st.sidebar.slider(
+        "Select Year Range:",
+        min_value=min_year,
+        max_value=max_year,
+        value=(2020, max_year),
+        step=1
+    )
+    
+    # Filter data based on slider selection
+    filtered_df = cleaned_df[
+        (cleaned_df['publish_year'] >= year_range[0]) & 
+        (cleaned_df['publish_year'] <= year_range[1])
+    ]
+    
+    st.write("### Filtered Data Analysis")
+    if filtered_df.empty:
+        st.warning("No data available for the selected year range. Please adjust the slider.")
+    else:
+        # Re-run analysis and visualization with filtered data
+        perform_analysis_and_visualize(filtered_df)
+    
+    # Display a sample of the data
+    st.write("### Sample Data")
+    st.dataframe(filtered_df.sample(min(20, len(filtered_df))))
+
+# Run the app
+if __name__ == "__main__":
+    streamlit_app()
