@@ -1,0 +1,116 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+# Set seaborn style for better visuals
+sns.set_theme(style="whitegrid")
+
+# --- Task 1: Load and Explore the Dataset ---
+
+print("--- Task 1: Data Loading and Exploration ---")
+print("Loading the Iris dataset...")
+
+try:
+    # Use a direct URL to a public dataset for convenience
+    url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv"
+    df = pd.read_csv(url)
+
+    # Display the first few rows
+    print("\nFirst 5 rows of the dataset:")
+    print(df.head())
+
+    # Explore data types and missing values
+    print("\nDataFrame Info (Data Types and Non-Null Counts):")
+    df.info()
+
+    # Check for missing values explicitly
+    print("\nMissing values per column:")
+    print(df.isnull().sum())
+
+    # Since the Iris dataset is clean, we can simulate a missing value for demonstration
+    # Let's drop a row with a missing value for demonstration purposes
+    # df.dropna(inplace=True) 
+    # Or, fill missing values (e.g., with the mean)
+    # df.fillna(df.mean(numeric_only=True), inplace=True)
+    
+    # The iris dataset is clean, so no cleaning is needed.
+    # If there were missing values, df.fillna(df.mean(), inplace=True) would be an effective way to handle them.
+
+except Exception as e:
+    print(f"Error: Unable to load or process the dataset. Please check the URL or file path.")
+    print(f"Details: {e}")
+    exit()
+
+# --- Task 2: Basic Data Analysis ---
+
+print("\n\n--- Task 2: Basic Data Analysis ---")
+
+# Compute basic statistics
+print("Statistical summary of numerical columns:")
+print(df.describe())
+
+# Group by 'species' and compute the mean of numerical columns
+print("\nMean of numerical features grouped by species:")
+species_means = df.groupby('species').mean()
+print(species_means)
+
+# Findings or observations:
+print("\n--- Key Findings from Analysis ---")
+print("1. Setosa has the smallest sepal and petal dimensions on average.")
+print("2. Virginica has the largest sepal and petal dimensions on average.")
+print("3. The standard deviation for petal length is highest, suggesting more variation in this feature compared to others.")
+print("4. There's a clear separation in petal dimensions between the three species, especially between setosa and the other two.")
+
+# --- Task 3: Data Visualization ---
+
+print("\n\n--- Task 3: Data Visualization ---")
+
+# Bar Chart: Average petal length by species
+plt.figure(figsize=(8, 6))
+sns.barplot(x='species', y='petal_length', data=df, errorbar='sd', palette='viridis')
+plt.title('Average Petal Length by Species')
+plt.xlabel('Species')
+plt.ylabel('Average Petal Length (cm)')
+plt.show()
+
+# The bar chart clearly shows the difference in average petal length across the three species.
+# Setosa has the shortest petals, followed by versicolor, and then virginica.
+
+# Histogram: Distribution of sepal length
+plt.figure(figsize=(8, 6))
+sns.histplot(data=df, x='sepal_length', bins=20, kde=True, color='purple')
+plt.title('Distribution of Sepal Length')
+plt.xlabel('Sepal Length (cm)')
+plt.ylabel('Frequency')
+plt.show()
+
+# The histogram shows that sepal length is approximately normally distributed, with most flowers having a sepal length around 5.5 to 6.5 cm.
+
+# Scatter Plot: Sepal Length vs. Petal Length
+plt.figure(figsize=(10, 8))
+sns.scatterplot(x='sepal_length', y='petal_length', hue='species', data=df, s=80)
+plt.title('Sepal Length vs. Petal Length by Species')
+plt.xlabel('Sepal Length (cm)')
+plt.ylabel('Petal Length (cm)')
+plt.legend(title='Species')
+plt.show()
+
+# The scatter plot reveals a strong positive correlation between sepal and petal length.
+# It also shows distinct clusters for each species, confirming that these two features are great for separating them.
+
+# Line chart: We need a time-series or sequential data.
+# The Iris dataset doesn't have a time component, so we will
+# create a simple line chart to visualize a trend.
+# Let's plot the cumulative average of petal width as we move through the dataset.
+df['cumulative_avg_petal_width'] = df['petal_width'].expanding().mean()
+plt.figure(figsize=(10, 6))
+plt.plot(df.index, df['cumulative_avg_petal_width'], marker='o', linestyle='-', color='teal')
+plt.title('Cumulative Average Petal Width Over Dataset Index')
+plt.xlabel('Observation Index')
+plt.ylabel('Cumulative Average Petal Width (cm)')
+plt.grid(True)
+plt.show()
+
+# This line chart demonstrates how a running average can be visualized,
+# showing how the cumulative average petal width stabilizes as more data is included.
