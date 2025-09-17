@@ -1,0 +1,83 @@
+import requests
+import os
+from urllib.parse import urlparse, unquote
+import hashlib
+
+def main():
+    """
+    Main function to run the Ubuntu Image Fetcher program.
+    """
+    print("Welcome to the Ubuntu Image Fetcher")
+    print("A tool for mindfully collecting images from the web\n")
+
+    # Get URLs from the user (handles multiple URLs separated by commas)
+    urls_input = input("Please enter the image URL(s), separated by commas: ")
+    urls = [url.strip() for url in urls_input.split(',')]
+
+    # Create directory if it doesn't exist
+    try:
+        os.makedirs("Fetched_Images", exist_ok=True)
+        # Dictionary to store file hashes to prevent duplicates
+        downloaded_files = {}
+    except OSError as e:
+        print(f"✗ An error occurred while creating the directory: {e}")
+        return
+
+    for url in urls:
+        if not url:
+            continue
+
+        try:
+            # Implement precautions for unknown sources
+            if not url.lower().startswith(('http://', 'https://')):
+                print(f"✗ Invalid URL protocol for {url}. Please use http:// or https://.")
+                continue
+
+            # Fetch the image with a timeout
+            response = requests.get(url, timeout=15)
+            # Raise an exception for bad status codes (4xx or 5xx)
+            response.raise_for_status()
+
+            # Check important HTTP headers before saving
+            content_type = response.headers.get('content-type')
+            if not content_type or not content_type.startswith('image/'):
+                print(f"✗ The URL {url} does not point to an image. Content-Type: {content_type}")
+                continue
+            
+            # Generate a unique hash of the image content
+            image_hash = hashlib.md5(response.content).hexdigest()
+
+            # Prevent downloading duplicate images
+            if image_hash in downloaded_files:
+                print(f"✓ Skipped: Duplicate image found at {url}. Original from {downloaded_files[image_hash]}")
+                continue
+            
+            # Extract filename from URL or generate one
+            parsed_url = urlparse(url)
+            filename = unquote(os.path.basename(parsed_url.path))
+            
+            # Fallback for URLs without a filename or with a generic one
+            if not filename or filename.startswith('.'):
+                filename = f"downloaded_image_{image_hash}.jpg"
+
+            filepath = os.path.join("Fetched_Images", filename)
+            
+            # Save the image in binary mode
+            with open(filepath, 'wb') as f:
+                f.write(response.content)
+            
+            # Store the hash to prevent future duplicates
+            downloaded_files[image_hash] = url
+
+            print(f"✓ Successfully fetched: {filename}")
+            print(f"✓ Image saved to {filepath}")
+        
+        except requests.exceptions.RequestException as e:
+            print(f"✗ Connection error for {url}: {e}")
+        except Exception as e:
+            print(f"✗ An error occurred for {url}: {e}")
+
+    print("\nConnection strengthened. Community enriched.")
+
+if __name__ == "__main__":
+    main()
